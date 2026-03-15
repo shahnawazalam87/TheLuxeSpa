@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>The Luxe Spa — Admin Dashboard</title>
+<title>TheLuxeSpa — Admin Dashboard</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -175,6 +175,70 @@ select.finp option{background:var(--dark3);}
   .plans-grid{grid-template-columns:1fr;}
 }
 </style>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, onValue, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG (same as index.html)
+  const firebaseConfig = {
+    apiKey: "AIzaSyASR7JU5ncqHe6BElAjkAK4tKC--BiNYak",
+    authDomain: "theluxespa-f1123.firebaseapp.com",
+    databaseURL: "https://theluxespa-f1123-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "theluxespa-f1123",
+    storageBucket: "theluxespa-f1123.firebasestorage.app",
+    messagingSenderId: "301868879221",
+    appId: "1:301868879221:web:9839927ea89e1c5db8973c",
+    measurementId: "G-T87RMMHZ56"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // ── REAL-TIME BOOKINGS LISTENER ──
+  // This updates admin panel INSTANTLY when any customer books
+  const bookingsRef = ref(db, 'bookings');
+  
+  onValue(bookingsRef, (snapshot) => {
+    const data = snapshot.val();
+    const bookings = [];
+    if (data) {
+      Object.entries(data).forEach(([key, val]) => {
+        bookings.push({ ...val, firebaseKey: key });
+      });
+      // Sort by newest first
+      bookings.sort((a, b) => b.id - a.id);
+    }
+    // Store in localStorage so admin panel JS can read it
+    localStorage.setItem('ls_bookings', JSON.stringify(bookings));
+    // Store firebase keys for deletion
+    window._firebaseBookings = bookings;
+    // Refresh admin UI
+    if (typeof window.refreshAdminUI === 'function') {
+      window.refreshAdminUI(bookings);
+    }
+    console.log('✅ Firebase bookings loaded:', bookings.length);
+  });
+
+  // Delete single booking from Firebase
+  window.deleteFromFirebase = function(firebaseKey) {
+    if (!firebaseKey) return;
+    const bookingRef = ref(db, 'bookings/' + firebaseKey);
+    remove(bookingRef)
+      .then(() => console.log('✅ Booking deleted from Firebase'))
+      .catch(err => console.error('Delete error:', err));
+  };
+
+  // Clear ALL bookings from Firebase
+  window.clearAllFirebase = function() {
+    remove(bookingsRef)
+      .then(() => console.log('✅ All bookings cleared'))
+      .catch(err => console.error('Clear error:', err));
+  };
+
+  console.log('✅ Firebase Admin connected - listening for bookings...');
+</script>
 </head>
 <body>
 <div id="tw"></div>
@@ -186,7 +250,7 @@ select.finp option{background:var(--dark3);}
       <div class="sb-logo">
         <div class="sb-orb">🌿</div>
         <div>
-          <div class="sb-brand-name">The Luxe Spa</div>
+          <div class="sb-brand-name">TheLuxeSpa</div>
           <div class="sb-brand-sub">Admin Panel</div>
         </div>
       </div>
@@ -204,7 +268,7 @@ select.finp option{background:var(--dark3);}
     <div class="sb-footer">
       <div class="sb-user">
         <div class="sb-av">A</div>
-        <div><div class="sb-uname">Admin</div><div class="sb-urole">The Luxe Spa</div></div>
+        <div><div class="sb-uname">Admin</div><div class="sb-urole">TheLuxeSpa</div></div>
       </div>
     </div>
   </aside>
@@ -281,7 +345,7 @@ select.finp option{background:var(--dark3);}
   <div class="mo-box">
     <div class="mo-hdr">
       <div>
-        <span class="mo-hdr-tag">✦ The Luxe Spa</span>
+        <span class="mo-hdr-tag">✦ TheLuxeSpa</span>
         <div class="mo-title" id="mo-title">Add New Plan</div>
       </div>
       <button class="mo-close" onclick="closeMo()">✕</button>
@@ -438,7 +502,13 @@ function drawTbl(bks){
   }).join('');
 }
 function filterBks(q){drawTbl(allBks.filter(b=>b.name.toLowerCase().includes(q.toLowerCase())||b.mob.includes(q)));}
-function clearAll(){if(!confirm('Clear ALL bookings?'))return;localStorage.setItem(SB,'[]');renderBks();renderDash();toast('🗑 Cleared','All bookings removed.');}
+function clearAll(){
+  if(!confirm('Clear ALL bookings? This will delete from ALL devices!'))return;
+  localStorage.setItem(SB,'[]');
+  if(typeof window.clearAllFirebase==='function') window.clearAllFirebase();
+  renderBks();renderDash();
+  toast('🗑 Cleared','All bookings removed from all devices.');
+}
 
 // MODAL
 let editId=null,selCol='#b8943f',delId=null;
@@ -470,6 +540,12 @@ function fmtD(s){if(!s)return'';const d=new Date(s+'T00:00:00');return d.toLocal
 
 // INIT
 renderDash();renderPlans();
+
+// Firebase real-time refresh hook
+window.refreshAdminUI = function() {
+  renderBks();
+  renderDash();
+};
 </script>
 </body>
 </html>
