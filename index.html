@@ -272,6 +272,47 @@ body{font-family:'Jost',sans-serif;background:var(--white);color:var(--text);ove
 @media(max-width:1100px){.pop-box{grid-template-columns:1fr;}.pl{display:none;}.pr{padding:40px 28px;}.h-title{font-size:58px;}.footer-grid{grid-template-columns:1fr 1fr;}}
 @media(max-width:768px){.topbar,.nav-ul,.nav-cta{display:none;}.hbg{display:flex;}.navbar{padding:0 20px;}.hero{height:auto;min-height:260px;}.hero-c{padding:0 24px 40px;}.h-title{font-size:40px;}.svc-grid,.about,.tgrid,.pkg-grid{grid-template-columns:1fr;}.gal-grid{grid-template-columns:1fr 1fr;grid-template-rows:auto;}.gal-item{grid-column:span 1!important;grid-row:span 1!important;height:200px;}.services,.gallery,.packages,.testi,.cta,.footer{padding:60px 20px;}.shdr-h{font-size:36px;}.cta{flex-direction:column;text-align:center;}.pkg-grid{gap:16px;background:none;}.footer-grid{grid-template-columns:1fr;gap:28px;}.about-content{padding:56px 28px;}.sbar{grid-template-columns:1fr 1fr;}}
 </style>
+
+<!-- ==========================================
+     FIREBASE SETUP
+     Replace the config below with YOUR Firebase config
+     Get it from: https://console.firebase.google.com
+     ========================================== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  // ⚠️ REPLACE THIS WITH YOUR FIREBASE CONFIG
+  const firebaseConfig = {
+    apiKey: "AIzaSyASR7JU5ncqHe6BElAjkAK4tKC--BiNYak",
+    authDomain: "theluxespa-f1123.firebaseapp.com",
+    databaseURL: "https://theluxespa-f1123-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "theluxespa-f1123",
+    storageBucket: "theluxespa-f1123.firebasestorage.app",
+    messagingSenderId: "301868879221",
+    appId: "1:301868879221:web:9839927ea89e1c5db8973c",
+    measurementId: "G-T87RMMHZ56"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Save booking to Firebase
+  window.saveBookingToFirebase = function(booking) {
+    const bookingsRef = ref(db, 'bookings');
+    push(bookingsRef, booking)
+      .then(() => console.log('✅ Booking saved to Firebase'))
+      .catch(err => {
+        console.error('Firebase error:', err);
+        // Fallback to localStorage if Firebase fails
+        const a = JSON.parse(localStorage.getItem('ls_bookings') || '[]');
+        a.unshift(booking);
+        localStorage.setItem('ls_bookings', JSON.stringify(a));
+      });
+  };
+
+  console.log('✅ Firebase connected');
+</script>
 </head>
 <body>
 <div class="pop-ov" id="pop-ov" style="display:none;">
@@ -773,7 +814,16 @@ body{font-family:'Jost',sans-serif;background:var(--white);color:var(--text);ove
 const SP='ls_plans',SB='ls_bookings';
 const DP=[{id:'basic',name:'Luxe Basic',emoji:'🌿',price:499,dur:'45 min',color:'#c9973a',popular:false,svcs:['Haircut & Style','Face Cleanup','Head Massage']},{id:'classic',name:'Luxe Classic',emoji:'🌸',price:999,dur:'90 min',color:'#c47e8a',popular:true,svcs:['Haircut & Style','Facial','Body Scrub','Manicure']},{id:'royal',name:'Royal Indulge',emoji:'✨',price:1799,dur:'150 min',color:'#9a7bae',popular:false,svcs:['Full Hair Treatment','Premium Facial','Body Massage','Mani-Pedi','Aromatherapy']}];
 function gP(){try{const p=JSON.parse(localStorage.getItem(SP));return(p&&p.length)?p:DP;}catch(e){return DP;}}
-function sB(b){const a=gBks();a.unshift(b);localStorage.setItem(SB,JSON.stringify(a));}
+function sB(b){
+  // Save to localStorage (backup)
+  const a=gBks();
+  a.unshift(b);
+  localStorage.setItem(SB,JSON.stringify(a));
+  // Save to Firebase (main - syncs across all devices)
+  if(typeof window.saveBookingToFirebase === 'function'){
+    window.saveBookingToFirebase(b);
+  }
+}
 function gBks(){try{return JSON.parse(localStorage.getItem(SB))||[];}catch(e){return[];}}
 let hs=0;
 const hT=['Where Beauty<br><strong>Meets Luxury</strong>','Your Perfect<br><strong>Bridal Look</strong>','Indulge In<br><strong>Pure Wellness</strong>'];
